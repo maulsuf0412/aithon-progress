@@ -273,7 +273,7 @@ table tbody tr td:last-child{border-right:1px solid #eee7ea;border-radius:0 10px
 <section id="final" class="page">
 <div class="card" style="margin-bottom:18px">
 <h2 style="color:var(--maroon);margin:0 0 6px">Checklist Ketupel</h2>
-<p style="font-size:11px;color:var(--grey);margin:0 0 16px">Centang item yang sudah aman. Progress akan terhitung otomatis.</p>
+<p style="font-size:11px;color:var(--grey);margin:0 0 16px">Centang item yang sudah aman. Progress akan terhitung otomatis dan centangannya diingat di browser ini.</p>
 <div class="check" id="checks">
 <label><input type="checkbox"><span><b>Acara</b><small>Rundown, MC, moderator, materi, praktik prompting, AI Challenge.</small></span></label>
 <label><input type="checkbox"><span><b>Humas</b><small>Konfirmasi GSA/pemateri, jadwal, kebutuhan, komunikasi.</small></span></label>
@@ -792,6 +792,61 @@ document.querySelectorAll('#checks input').forEach(x=>x.addEventListener('change
   const all=document.querySelectorAll('#checks input'), done=[...all].filter(x=>x.checked).length, pct=Math.round(done/all.length*100);
   document.getElementById('bar').style.width=pct+'%';document.getElementById('pct').textContent=pct+'% selesai';
 }));
+/* Centangan disimpan di browser masing-masing supaya tidak hilang saat halaman dimuat ulang.
+   Kuncinya diturunkan dari teks label, bukan urutan, supaya centangan tidak melompat ke item
+   lain kalau daftarnya nanti ditambah atau disusun ulang. */
+const CEKLIS_KUNCI="aithon.ceklis.v1";
+
+const ceklisSemua=[...document.querySelectorAll('input[type="checkbox"]')];
+const ceklisSlug=s=>(s||"").trim().toLowerCase().replace(/\s+/g,"-").replace(/[^a-z0-9:-]/g,"").slice(0,60);
+
+const ceklisNama=(el,i)=>{
+  const teks=ceklisSlug(el.closest("label")?.textContent);
+  const kartu=el.closest(".meeting-card");
+  if(kartu) return "rapat:"+ceklisSlug(kartu.querySelector("summary b")?.textContent)+":"+teks;
+  if(el.closest("#checks")) return "ketupel:"+teks;
+  return "lain:"+i+":"+teks;
+};
+
+// Kalau ada dua label berteks sama, bedakan dengan nomor urut supaya tidak saling menimpa.
+const ceklisKunci=new Map();
+{
+  const kepakai=new Map();
+  ceklisSemua.forEach((el,i)=>{
+    const dasar=ceklisNama(el,i);
+    const n=kepakai.get(dasar)||0;
+    kepakai.set(dasar,n+1);
+    ceklisKunci.set(el,n?dasar+"#"+n:dasar);
+  });
+}
+
+function ceklisBaca(){
+  try{
+    const isi=JSON.parse(localStorage.getItem(CEKLIS_KUNCI)||"{}");
+    return isi&&typeof isi==="object"?isi:{};
+  }catch(e){ return {}; }   // penyimpanan penuh, rusak, atau dimatikan browser
+}
+
+function ceklisTulis(){
+  try{
+    const isi={};
+    ceklisSemua.forEach(el=>{ if(el.checked) isi[ceklisKunci.get(el)]=1; });
+    localStorage.setItem(CEKLIS_KUNCI,JSON.stringify(isi));
+  }catch(e){ /* mode penyamaran / penyimpanan ditolak — halaman tetap jalan, hanya tidak diingat */ }
+}
+
+const ceklisTersimpan=ceklisBaca();
+ceklisSemua.forEach(el=>{ if(ceklisTersimpan[ceklisKunci.get(el)]) el.checked=true; });
+
+// Progress bar dihitung oleh listener 'change' yang sudah ada, jadi dipicu sekali
+// setelah pemulihan supaya angkanya cocok dengan centangan yang baru dikembalikan.
+const ceklisPertama=document.querySelector('#checks input[type="checkbox"]');
+if(ceklisPertama) ceklisPertama.dispatchEvent(new Event("change",{bubbles:true}));
+
+document.addEventListener("change",ev=>{
+  if(ev.target.matches('input[type="checkbox"]')) ceklisTulis();
+});
+
 /* Pembaca CSV spreadsheet RAB. Dipakai dua kali: saat build (Node, untuk salinan
    cadangan) dan di browser (untuk data langsung). Satu sumber supaya tidak beda hasil. */
 
@@ -861,7 +916,7 @@ function rabBaca(text){
   return {kategori,grandTotal,warnings};
 }
 
-const rab={"sumber":"https://docs.google.com/spreadsheets/d/1AtMls0gO6CUwhryH-jxHwV8LGNQi1BqaDcGK7yLFH5s/edit","csv":"https://docs.google.com/spreadsheets/d/1AtMls0gO6CUwhryH-jxHwV8LGNQi1BqaDcGK7yLFH5s/export?format=csv","snapshot":"14 Agustus 2026","kategori":[{"kode":"A","nama":"KESEKRETARIATAN & ADMINISTRASI","subtotal":24000,"items":[{"no":1,"item":"materai","volume":"2","satuan":"pcs","harga":12000,"total":24000,"ket":""},{"no":2,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":3,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""}]},{"kode":"B","nama":"OPERASIONAL & TEKNOLOGI","subtotal":0,"items":[{"no":1,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":2,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":3,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""}]},{"kode":"C","nama":"ACARA & KEGIATAN","subtotal":0,"items":[{"no":1,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":2,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":3,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""}]},{"kode":"D","nama":"KONSUMSI","subtotal":648000,"items":[{"no":1,"item":"lazzatto","volume":"54","satuan":"pcs","harga":12000,"total":648000,"ket":""},{"no":2,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":3,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""}]},{"kode":"E","nama":"PUBLIKASI & MEDIA","subtotal":0,"items":[{"no":1,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":2,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":3,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""}]}],"grandTotal":672000};
+const rab={"sumber":"https://docs.google.com/spreadsheets/d/1AtMls0gO6CUwhryH-jxHwV8LGNQi1BqaDcGK7yLFH5s/edit","csv":"https://docs.google.com/spreadsheets/d/1AtMls0gO6CUwhryH-jxHwV8LGNQi1BqaDcGK7yLFH5s/export?format=csv","snapshot":"18 Agustus 2026","kategori":[{"kode":"A","nama":"KESEKRETARIATAN & ADMINISTRASI","subtotal":11000,"items":[{"no":1,"item":"Sertifikat Narsum & Moderator","volume":"2","satuan":"pcs","harga":5000,"total":10000,"ket":""},{"no":2,"item":"coba","volume":"1","satuan":"pcs","harga":1000,"total":1000,"ket":""},{"no":3,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""}]},{"kode":"B","nama":"OPERASIONAL & TEKNOLOGI","subtotal":0,"items":[{"no":1,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":2,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":3,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""}]},{"kode":"C","nama":"ACARA & KEGIATAN","subtotal":410000,"items":[{"no":1,"item":"Narasumber","volume":"1","satuan":"","harga":300000,"total":300000,"ket":""},{"no":2,"item":"Hadiah Challenge","volume":"3","satuan":"","harga":20000,"total":60000,"ket":""},{"no":3,"item":"Spanduk 250 cm","volume":"1","satuan":"","harga":50000,"total":50000,"ket":""},{"no":4,"item":"Dekorasi","volume":"1","satuan":"","harga":30000,"total":30000,"ket":""}]},{"kode":"D","nama":"KONSUMSI","subtotal":100000,"items":[{"no":1,"item":"Snack ringan","volume":"3","satuan":"Ball","harga":25000,"total":75000,"ket":""},{"no":2,"item":"Air isi ulang galon","volume":"1","satuan":"Galon","harga":5000,"total":5000,"ket":""},{"no":3,"item":"Suguhan Tamu 2 Piring (3 jenis)","volume":"10","satuan":"satuan","harga":2000,"total":20000,"ket":""},{"no":4,"item":"Lee mineral Botol","volume":"3","satuan":"satuan","harga":3000,"total":9000,"ket":""}]},{"kode":"E","nama":"PUBLIKASI & MEDIA","subtotal":0,"items":[{"no":1,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":2,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":3,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""}]}],"grandTotal":521000};
 /* `rab` (salinan cadangan) dan parser CSV disuntikkan saat build — jangan diedit manual. */
 const rupiah=n=>n==null?"—":"Rp "+Number(n).toLocaleString("id-ID");
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
