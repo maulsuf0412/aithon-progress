@@ -369,8 +369,10 @@ img{max-width:100%;height:auto}
 }
 
 @media(max-width:420px){
-  .nav{grid-template-columns:1fr}
-  .nav button{text-align:left;padding:11px 14px}
+  /* Tetap dua kolom: satu kolom bikin 8 tombol jadi 8 baris dan mendorong
+     isi halaman terlalu jauh ke bawah. Di 320px pun tiap tombol masih ~142px. */
+  .nav{gap:6px}
+  .nav button{padding:10px 6px;font-size:10.5px}
   h1{font-size:19px}
   .ck-top{gap:5px}
   .ck-item{padding:11px 11px;gap:9px}
