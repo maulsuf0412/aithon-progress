@@ -292,6 +292,10 @@ main, section, article, .card, .timeline, .division-card, .content, .container {
 .ck-pill:focus-visible,.ck-done-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 @media(max-width:800px){.ck-stats{grid-template-columns:1fr 1fr}.ck-stage-head{padding:13px 14px}.ck-body{padding:4px 14px 14px}}
 @media(max-width:520px){.ck-stats{grid-template-columns:1fr}.ck-stage-right{gap:8px}.ck-ring{width:32px;height:32px}.ck-ring span{width:23px;height:23px}}
+.ck-catatan{margin-top:5px;font-size:9.5px;line-height:1.5;padding:6px 9px;border-radius:8px}
+.ck-catatan.kendala{background:#fdf1f1;color:#8a3a3a}
+.ck-catatan.next{background:#f1f5fd;color:#3a527f}
+.ck-head{align-items:flex-start}
 /* ===== Perbaikan tampilan layar sempit =====
    Diukur di viewport 375px: halaman meluber 503px ke kanan. Penyebab utamanya
    .nav (850px dipaksa ke dalam 319px karena flex-wrap:nowrap) dan header yang
@@ -744,11 +748,15 @@ img{max-width:100%;height:auto}
     <div class="ck-head">
       <div>
         <div class="info-kicker">CHECKLIST PROGRESS PANITIA</div>
-        <h2 style="color:var(--maroon);margin:5px 0 6px;font-size:23px">62 Tugas, 7 Tahap</h2>
+        <h2 style="color:var(--maroon);margin:5px 0 6px;font-size:23px">Checklist Tugas Panitia</h2>
         <p style="font-size:11px;color:var(--grey);margin:0;max-width:540px">
-          Setiap tugas punya divisi, PIC, dan output yang harus dihasilkan. Tandai
-          <b>Lagi dikerjain</b> saat mulai, lalu <b>Tandai selesai</b> kalau sudah tuntas.
+          Daftar tugas dibaca langsung dari spreadsheet checklist. <span id="ckSumber"></span>
         </p>
+      </div>
+      <div class="rab-actions">
+        <span class="rab-status luring" id="ckStatusChip">Memuat…</span>
+        <button class="rab-reload" id="ckReload" type="button">Muat ulang</button>
+        <a class="rab-source" id="ckLink" href="#" target="_blank" rel="noopener noreferrer">Buka Spreadsheet ↗</a>
       </div>
     </div>
 
@@ -764,8 +772,11 @@ img{max-width:100%;height:auto}
     </div>
 
     <div class="ck-note">
-      <b>Cara kerja penandaan</b>
-      <span id="ckSimpanNote"></span>
+      <b>Cara status dihitung</b>
+      Status yang tampil adalah yang <b>paling maju</b> antara kolom Status di spreadsheet dan
+      tandaan di halaman ini — jadi tidak ada yang mundur saat halaman dimuat ulang. Tandaan di
+      halaman tersimpan di browser masing-masing; untuk catatan yang dilihat semua panitia,
+      isi kolom <b>Status</b>, <b>Kendala</b>, dan <b>Next Action</b> di spreadsheet.
     </div>
   </div>
 
@@ -1073,6 +1084,65 @@ function rabBaca(text){
   return {kategori,grandTotal,warnings};
 }
 
+/* Pembaca CSV spreadsheet Checklist. Dipakai saat build (untuk salinan cadangan)
+   dan di browser (untuk data langsung) — satu sumber supaya hasilnya tidak beda. */
+
+const CK_KOLOM=["no","tahap","tanggal","divisi","pic","tugas","output","status","progress","kendala","next"];
+
+/* Urutan status; yang lebih tinggi tidak boleh diturunkan oleh yang lebih rendah. */
+const CK_TINGKAT={todo:0,progress:1,done:2};
+
+function ckStatusDariSheet(teks){
+  const s=String(teks||"").trim().toLowerCase();
+  if(!s) return "todo";
+  if(/selesai|done|beres|tuntas|kelar/.test(s)) return "done";
+  if(/dikerjakan|proses|progress|berjalan|jalan|mulai$/.test(s)&&!/belum/.test(s)) return "progress";
+  return "todo";
+}
+
+function ckBaca(text){
+  const rows=rabParseCsv(text);          // parser CSV dipakai bersama dengan RAB
+  if(!rows.length) throw new Error("Spreadsheet checklist kosong");
+
+  const judul=rows[0].map(c=>String(c||"").trim().toLowerCase());
+  const cari=(...kata)=>{
+    const i=judul.findIndex(h=>kata.some(k=>h.includes(k)));
+    return i<0?null:i;
+  };
+  const peta={
+    no:cari("no"), tahap:cari("tahap"), tanggal:cari("tanggal"),
+    divisi:cari("divisi"), pic:cari("pic"),
+    tugas:cari("checklist","pekerjaan","tugas"), output:cari("output"),
+    status:cari("status"), kendala:cari("kendala","catatan"), next:cari("next")
+  };
+  if(peta.tugas==null||peta.tahap==null) throw new Error("Kolom Tahap/Pekerjaan tidak ditemukan");
+
+  const ambil=(r,k)=>peta[k]==null?"":String(r[peta[k]]||"").trim();
+  const items=[];
+  rows.slice(1).forEach(r=>{
+    const no=ambil(r,"no");
+    const tugas=ambil(r,"tugas");
+    if(!/^\d+$/.test(no)||!tugas) return;
+    items.push({
+      no:Number(no),
+      tahap:ambil(r,"tahap"), tanggal:ambil(r,"tanggal"),
+      divisi:ambil(r,"divisi"), pic:ambil(r,"pic"),
+      tugas, output:ambil(r,"output"),
+      status:ckStatusDariSheet(ambil(r,"status")),
+      kendala:ambil(r,"kendala"), next:ambil(r,"next")
+    });
+  });
+  if(!items.length) throw new Error("Tidak ada baris tugas terbaca");
+  return items;
+}
+
+/* Kunci penyimpanan lokal diturunkan dari isi tugas, bukan nomor baris — kalau ada
+   baris disisipkan di spreadsheet, nomor bergeser dan status akan lompat ke tugas lain. */
+function ckKunci(it){
+  const bersih=s=>String(s||"").toLowerCase().replace(/\s+/g," ").trim();
+  return [bersih(it.tahap),bersih(it.divisi),bersih(it.tugas).slice(0,60)].join("|");
+}
+
 const rab={"sumber":"https://docs.google.com/spreadsheets/d/1AtMls0gO6CUwhryH-jxHwV8LGNQi1BqaDcGK7yLFH5s/edit","csv":"https://docs.google.com/spreadsheets/d/1AtMls0gO6CUwhryH-jxHwV8LGNQi1BqaDcGK7yLFH5s/export?format=csv","snapshot":"19 Agustus 2026","kategori":[{"kode":"A","nama":"KESEKRETARIATAN & ADMINISTRASI","subtotal":10000,"items":[{"no":1,"item":"Sertifikat Narsum & Moderator","volume":"2","satuan":"pcs","harga":5000,"total":10000,"ket":""},{"no":2,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":3,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""}]},{"kode":"B","nama":"OPERASIONAL & TEKNOLOGI","subtotal":0,"items":[{"no":1,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":2,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":3,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""}]},{"kode":"C","nama":"ACARA & KEGIATAN","subtotal":410000,"items":[{"no":1,"item":"Narasumber","volume":"1","satuan":"","harga":300000,"total":300000,"ket":""},{"no":2,"item":"Hadiah Challenge","volume":"3","satuan":"","harga":20000,"total":60000,"ket":""},{"no":3,"item":"Spanduk 250 cm","volume":"1","satuan":"","harga":50000,"total":50000,"ket":""},{"no":4,"item":"Dekorasi","volume":"1","satuan":"","harga":30000,"total":30000,"ket":""}]},{"kode":"D","nama":"KONSUMSI","subtotal":100000,"items":[{"no":1,"item":"Snack ringan","volume":"3","satuan":"Ball","harga":25000,"total":75000,"ket":""},{"no":2,"item":"Air isi ulang galon","volume":"1","satuan":"Galon","harga":5000,"total":5000,"ket":""},{"no":3,"item":"Suguhan Tamu 2 Piring (3 jenis)","volume":"10","satuan":"satuan","harga":2000,"total":20000,"ket":""},{"no":4,"item":"Lee mineral Botol","volume":"3","satuan":"satuan","harga":3000,"total":9000,"ket":""}]},{"kode":"E","nama":"PUBLIKASI & MEDIA","subtotal":0,"items":[{"no":1,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":2,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":3,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""}]}],"grandTotal":520000};
 /* `rab` (salinan cadangan) dan parser CSV disuntikkan saat build — jangan diedit manual. */
 const rupiah=n=>n==null?"—":"Rp "+Number(n).toLocaleString("id-ID");
@@ -1168,33 +1238,58 @@ document.querySelector('.nav button[onclick*="budget"]').addEventListener("click
   if(Date.now()-rabTerakhir>60000){ rabTerakhir=Date.now(); muatRab(false); }
 });
 
-const CK_DATA=[{"no":1,"tahap":"Rapat Perdana","tanggal":"21/08/2026","divisi":"Ketupel","pic":"Olivia Yulianti","tugas":"Nyamain tujuan bareng, susun timeline, bagi tugas, dan alur koordinasi panitia","output":"Timeline & pembagian kerja fix disepakati"},{"no":2,"tahap":"Rapat Perdana","tanggal":"21/08/2026","divisi":"Sekplak","pic":"Raisha Putri","tugas":"Siapin administrasi, notulen, arsip, dan database panitia","output":"Sistem administrasi udah jalan"},{"no":3,"tahap":"Rapat Perdana","tanggal":"21/08/2026","divisi":"Benplak","pic":"Dana Alpaji","tugas":"Kumpulin kebutuhan anggaran dari tiap divisi","output":"Draft RAB awal kelar"},{"no":4,"tahap":"Rapat Perdana","tanggal":"21/08/2026","divisi":"Acara","pic":"Ariq Al Fauzan","tugas":"Susun konsep alur acara, materi, praktik prompting, dan challenge","output":"Konsep acara awal siap"},{"no":5,"tahap":"Rapat Perdana","tanggal":"21/08/2026","divisi":"Humas","pic":"Muhammad Bagas Firdaus","tugas":"List kebutuhan komunikasi ke GSA & pemateri (kontak awal udah jalan dari sini)","output":"Daftar kebutuhan komunikasi"},{"no":6,"tahap":"Rapat Perdana","tanggal":"21/08/2026","divisi":"PDD","pic":"Nadhif Alfasya","tugas":"Nentuin kebutuhan desain, publikasi, dokumentasi, dan aset visual","output":"Konsep PDD awal beres"},{"no":7,"tahap":"Rapat Perdana","tanggal":"21/08/2026","divisi":"Logistik","pic":"Nadifur Rizky Romadona","tugas":"Data kebutuhan tempat, perangkat, dan teknis acara","output":"List kebutuhan logistik"},{"no":8,"tahap":"Rapat Perdana","tanggal":"21/08/2026","divisi":"Konsumsi","pic":"Nadaa Fitria Hasyam","tugas":"Estimasi kebutuhan konsumsi buat peserta, panitia, dan pemateri","output":"Estimasi konsumsi"},{"no":9,"tahap":"Progress I","tanggal":"29/08/2026","divisi":"Ketupel","pic":"Olivia Yulianti","tugas":"Review progress semua divisi, bantu selesaiin kendala lintas divisi","output":"Progress awal kelihatan"},{"no":10,"tahap":"Progress I","tanggal":"29/08/2026","divisi":"Sekplak","pic":"Raisha Putri","tugas":"Mastiin administrasi, data peserta, dan arsip jalan lancar","output":"Administrasi minimal 60%"},{"no":11,"tahap":"Progress I","tanggal":"29/08/2026","divisi":"Benplak","pic":"Dana Alpaji","tugas":"Update RAB sesuai kebutuhan aktual","output":"RAB ter-update"},{"no":12,"tahap":"Progress I","tanggal":"29/08/2026","divisi":"Acara","pic":"Ariq Al Fauzan","tugas":"Kelarin draft rundown & bagi petugas","output":"Draft rundown"},{"no":13,"tahap":"Progress I","tanggal":"29/08/2026","divisi":"Humas","pic":"Muhammad Bagas Firdaus","tugas":"Follow up lagi ke GSA/pemateri, mastiin semuanya on track","output":"Konfirmasi lanjutan beres"},{"no":14,"tahap":"Progress I","tanggal":"29/08/2026","divisi":"Humas","pic":"Muhammad Bagas Firdaus","tugas":"Urus TTD dokumen/surat ke Pembina, Ketua Pelaksana, dan Ketua Umum UKM UDC","output":"Dokumen/surat udah ditandatangan Pembina, Ketua Pelaksana, & Ketua Umum UKM UDC"},{"no":15,"tahap":"Progress I","tanggal":"29/08/2026","divisi":"PDD","pic":"Nadhif Alfasya","tugas":"Kelarin draft identitas visual & publikasi internal","output":"Draft aset PDD"},{"no":16,"tahap":"Progress I","tanggal":"29/08/2026","divisi":"PDD","pic":"Nadhif Alfasya","tugas":"Siapin desain & spek spanduk 2,5 meter, sesuain sama identitas visual AITHON","output":"Desain spanduk 2,5 meter siap produksi"},{"no":17,"tahap":"Progress I","tanggal":"29/08/2026","divisi":"Logistik","pic":"Nadifur Rizky Romadona","tugas":"Mastiin opsi tempat, layout, dan perangkat","output":"Pemetaan teknis"},{"no":18,"tahap":"Progress I","tanggal":"29/08/2026","divisi":"Konsumsi","pic":"Nadaa Fitria Hasyam","tugas":"Tentuin opsi konsumsi & estimasi jumlah","output":"Pilihan konsumsi"},{"no":19,"tahap":"Progress II","tanggal":"05/09/2026","divisi":"Ketupel","pic":"Olivia Yulianti","tugas":"Cek progress lintas divisi lagi","output":"Progress 70–80%"},{"no":20,"tahap":"Progress II","tanggal":"05/09/2026","divisi":"Sekplak","pic":"Raisha Putri","tugas":"Finalisasi administrasi, absensi, peserta, dan sertifikat","output":"Administrasi 80%"},{"no":21,"tahap":"Progress II","tanggal":"05/09/2026","divisi":"Benplak","pic":"Dana Alpaji","tugas":"Mastiin kebutuhan utama udah ada alokasi anggarannya","output":"Anggaran terkendali"},{"no":22,"tahap":"Progress II","tanggal":"05/09/2026","divisi":"Acara","pic":"Ariq Al Fauzan","tugas":"Tes alur materi, praktik AI, challenge, MC, moderator, dan timekeeping","output":"Rundown teknis"},{"no":23,"tahap":"Progress II","tanggal":"05/09/2026","divisi":"Humas","pic":"Muhammad Bagas Firdaus","tugas":"Fix-in komunikasi sama GSA & pemateri biar makin solid","output":"Konfirmasi utama"},{"no":24,"tahap":"Progress II","tanggal":"05/09/2026","divisi":"Humas","pic":"Muhammad Bagas Firdaus","tugas":"Hubungin & sampein surat undangan ke Wakil Rektor III (WR III) serta Pembina UKM UDC","output":"Surat undangan udah nyampe & ada konfirmasi kehadiran"},{"no":25,"tahap":"Progress II","tanggal":"05/09/2026","divisi":"PDD","pic":"Nadhif Alfasya","tugas":"Siapin poster, sertifikat, PPT, dan kebutuhan dokumentasi","output":"Aset produksi"},{"no":26,"tahap":"Progress II","tanggal":"05/09/2026","divisi":"PDD","pic":"Nadhif Alfasya","tugas":"Beli/cetak spanduk 2,5 meter, mastiin hasil cetak sesuai desain","output":"Spanduk 2,5 meter siap pakai"},{"no":27,"tahap":"Progress II","tanggal":"05/09/2026","divisi":"PDD","pic":"Nadhif Alfasya","tugas":"Bikin desain sertifikat buat moderator, narasumber, OC, panitia, dan peserta","output":"Template sertifikat siap dipakai"},{"no":28,"tahap":"Progress II","tanggal":"05/09/2026","divisi":"Logistik","pic":"Nadifur Rizky Romadona","tugas":"Mastiin perangkat utama & cadangan tersedia","output":"Technical readiness"},{"no":29,"tahap":"Progress II","tanggal":"05/09/2026","divisi":"Konsumsi","pic":"Nadaa Fitria Hasyam","tugas":"Fix-in jumlah, vendor, harga, dan distribusi","output":"Konsumsi siap"},{"no":30,"tahap":"Progress III","tanggal":"10/09/2026","divisi":"Ketupel","pic":"Olivia Yulianti","tugas":"QC terakhir, list pekerjaan yang masih ngegantung","output":"Minimal 90% kelar"},{"no":31,"tahap":"Progress III","tanggal":"10/09/2026","divisi":"Sekplak","pic":"Raisha Putri","tugas":"Mastiin semua dokumen utama siap dipakai","output":"Dokumen 90–100%"},{"no":32,"tahap":"Progress III","tanggal":"10/09/2026","divisi":"Benplak","pic":"Dana Alpaji","tugas":"Rapihin rekap transaksi & kebutuhan pembayaran","output":"Keuangan siap difiksasi"},{"no":33,"tahap":"Progress III","tanggal":"10/09/2026","divisi":"Acara","pic":"Ariq Al Fauzan","tugas":"Fix-in draft alur acara & contingency plan","output":"Rundown final draft"},{"no":34,"tahap":"Progress III","tanggal":"10/09/2026","divisi":"Humas","pic":"Muhammad Bagas Firdaus","tugas":"Kelarin semua konfirmasi pihak terkait, termasuk follow up terakhir ke GSA","output":"Konfirmasi final"},{"no":35,"tahap":"Progress III","tanggal":"10/09/2026","divisi":"PDD","pic":"Nadhif Alfasya","tugas":"Final check semua aset publikasi, PPT, dan dokumentasi","output":"File siap"},{"no":36,"tahap":"Progress III","tanggal":"10/09/2026","divisi":"PDD","pic":"Nadhif Alfasya","tugas":"Final check data penerima & kesiapan sertifikat buat moderator, narasumber, OC, panitia, dan peserta","output":"Data sertifikat tervalidasi, siap cetak/bagi"},{"no":37,"tahap":"Progress III","tanggal":"10/09/2026","divisi":"Logistik","pic":"Nadifur Rizky Romadona","tugas":"Kelarin technical checklist","output":"Teknis 90%+"},{"no":38,"tahap":"Progress III","tanggal":"10/09/2026","divisi":"Konsumsi","pic":"Nadaa Fitria Hasyam","tugas":"Fix-in jumlah & jadwal distribusi","output":"Konsumsi final draft"},{"no":39,"tahap":"Fiksasi","tanggal":"13/09/2026","divisi":"Ketupel","pic":"Olivia Yulianti","tugas":"Kunci semua keputusan utama acara","output":"Semua keputusan FINAL"},{"no":40,"tahap":"Fiksasi","tanggal":"13/09/2026","divisi":"Sekplak","pic":"Raisha Putri","tugas":"Kunci dokumen & database Hari-H","output":"Administrasi FINAL"},{"no":41,"tahap":"Fiksasi","tanggal":"13/09/2026","divisi":"Benplak","pic":"Dana Alpaji","tugas":"Kunci RAB & pembayaran prioritas","output":"Anggaran FINAL"},{"no":42,"tahap":"Fiksasi","tanggal":"13/09/2026","divisi":"Acara","pic":"Ariq Al Fauzan","tugas":"Kunci rundown, script, petugas, praktik, dan challenge","output":"Rundown FINAL"},{"no":43,"tahap":"Fiksasi","tanggal":"13/09/2026","divisi":"Humas","pic":"Muhammad Bagas Firdaus","tugas":"Follow up terakhir buat mastiin GSA/pemateri fix hadir","output":"Konfirmasi FINAL"},{"no":44,"tahap":"Fiksasi","tanggal":"13/09/2026","divisi":"PDD","pic":"Nadhif Alfasya","tugas":"Kunci desain, PPT, sertifikat, dan backup","output":"Aset FINAL"},{"no":45,"tahap":"Fiksasi","tanggal":"13/09/2026","divisi":"Logistik","pic":"Nadifur Rizky Romadona","tugas":"Kunci tempat, layout, alat, dan backup","output":"Teknis FINAL"},{"no":46,"tahap":"Fiksasi","tanggal":"13/09/2026","divisi":"Konsumsi","pic":"Nadaa Fitria Hasyam","tugas":"Kunci vendor, jumlah, dan distribusi","output":"Konsumsi FINAL"},{"no":47,"tahap":"Gladi Bersih","tanggal":"18/09/2026","divisi":"Ketupel","pic":"Olivia Yulianti","tugas":"Pimpin gladi bersih & catat perbaikan terakhir","output":"Gladi selesai"},{"no":48,"tahap":"Gladi Bersih","tanggal":"18/09/2026","divisi":"Sekplak","pic":"Raisha Putri","tugas":"Simulasi administrasi & absensi","output":"Dokumen Hari-H siap"},{"no":49,"tahap":"Gladi Bersih","tanggal":"18/09/2026","divisi":"Benplak","pic":"Dana Alpaji","tugas":"Siapin dana operasional Hari-H","output":"Dana siap"},{"no":50,"tahap":"Gladi Bersih","tanggal":"18/09/2026","divisi":"Acara","pic":"Ariq Al Fauzan","tugas":"Simulasi full dari pembukaan sampe penutupan","output":"Semua petugas paham alur"},{"no":51,"tahap":"Gladi Bersih","tanggal":"18/09/2026","divisi":"Humas","pic":"Muhammad Bagas Firdaus","tugas":"Pastiin kontak & kedatangan GSA/pemateri di Hari-H","output":"Kontak Hari-H siap"},{"no":52,"tahap":"Gladi Bersih","tanggal":"18/09/2026","divisi":"PDD","pic":"Nadhif Alfasya","tugas":"Tes kamera, PPT, dokumentasi, dan backup","output":"Teknis PDD siap"},{"no":53,"tahap":"Gladi Bersih","tanggal":"18/09/2026","divisi":"Logistik","pic":"Nadifur Rizky Romadona","tugas":"Tes audio, proyektor, internet, listrik, dan layout","output":"Teknis teruji"},{"no":54,"tahap":"Gladi Bersih","tanggal":"18/09/2026","divisi":"Konsumsi","pic":"Nadaa Fitria Hasyam","tugas":"Simulasi penerimaan & distribusi konsumsi","output":"Distribusi siap"},{"no":55,"tahap":"Hari-H","tanggal":"19/09/2026","divisi":"Ketupel","pic":"Olivia Yulianti","tugas":"Monitoring keseluruhan pelaksanaan AITHON","output":"Acara jalan sesuai rundown"},{"no":56,"tahap":"Hari-H","tanggal":"19/09/2026","divisi":"Sekplak","pic":"Raisha Putri","tugas":"Kelola administrasi, absensi, dan kebutuhan dokumen","output":"Administrasi Hari-H"},{"no":57,"tahap":"Hari-H","tanggal":"19/09/2026","divisi":"Benplak","pic":"Dana Alpaji","tugas":"Kelola kebutuhan pembayaran & transaksi Hari-H","output":"Keuangan Hari-H"},{"no":58,"tahap":"Hari-H","tanggal":"19/09/2026","divisi":"Acara","pic":"Ariq Al Fauzan","tugas":"Kawal rundown & koordinasi petugas","output":"Rundown jalan lancar"},{"no":59,"tahap":"Hari-H","tanggal":"19/09/2026","divisi":"Humas","pic":"Muhammad Bagas Firdaus","tugas":"Temenin GSA/pemateri & handle komunikasi eksternal","output":"Pemateri terlayani"},{"no":60,"tahap":"Hari-H","tanggal":"19/09/2026","divisi":"PDD","pic":"Nadhif Alfasya","tugas":"Dokumentasi & kelola file kegiatan","output":"Dokumentasi lengkap"},{"no":61,"tahap":"Hari-H","tanggal":"19/09/2026","divisi":"Logistik","pic":"Nadifur Rizky Romadona","tugas":"Kawal kebutuhan teknis selama acara","output":"Teknis aman"},{"no":62,"tahap":"Hari-H","tanggal":"19/09/2026","divisi":"Konsumsi","pic":"Nadaa Fitria Hasyam","tugas":"Distribusi konsumsi sesuai jadwal","output":"Konsumsi terdistribusi"}];
-/* Checklist 62 tugas. `CK_DATA` disuntikkan saat build.
+const CK_SHEET="https://docs.google.com/spreadsheets/d/1qGOrLLY9t_uhUK050xZbUW6w2auJc5q1wX_VK2fAN8Y/edit";
+const CK_CSV="https://docs.google.com/spreadsheets/d/1qGOrLLY9t_uhUK050xZbUW6w2auJc5q1wX_VK2fAN8Y/export?format=csv";
+const CK_DATA=[{"no":1,"tahap":"Rapat Perdana","tanggal":"21/08/2026","divisi":"Ketupel","pic":"Olivia Yulianti","tugas":"Menyamakan tujuan, timeline, pembagian tugas, dan alur koordinasi panitia","output":"Timeline dan pembagian kerja disepakati","status":"todo","kendala":"","next":""},{"no":2,"tahap":"Rapat Perdana","tanggal":"21/08/2026","divisi":"Sekplak","pic":"Raisha Putri","tugas":"Menyiapkan administrasi, notulen, arsip, dan database panitia","output":"Sistem administrasi siap","status":"todo","kendala":"","next":""},{"no":3,"tahap":"Rapat Perdana","tanggal":"21/08/2026","divisi":"Benplak","pic":"Dana Alpaji","tugas":"Mengumpulkan kebutuhan anggaran dari setiap divisi","output":"Draft RAB awal","status":"todo","kendala":"","next":""},{"no":4,"tahap":"Rapat Perdana","tanggal":"21/08/2026","divisi":"Acara","pic":"Ariq Al Fauzan","tugas":"Menyusun konsep alur acara, materi, praktik prompting, dan challenge","output":"Konsep acara awal","status":"todo","kendala":"","next":""},{"no":5,"tahap":"Rapat Perdana","tanggal":"21/08/2026","divisi":"Humas","pic":"Muhammad Bagas Firdaus","tugas":"Menyiapkan komunikasi dengan GSA dan pemateri","output":"Daftar kebutuhan komunikasi","status":"todo","kendala":"","next":""},{"no":6,"tahap":"Rapat Perdana","tanggal":"21/08/2026","divisi":"PDD","pic":"Nadhif Alfasya","tugas":"Menentukan kebutuhan desain, publikasi, dokumentasi, dan aset visual","output":"Konsep PDD awal","status":"todo","kendala":"","next":""},{"no":7,"tahap":"Rapat Perdana","tanggal":"21/08/2026","divisi":"Logistik","pic":"Nadifur Rizky Romadona","tugas":"Mendata kebutuhan tempat, perangkat, dan teknis kegiatan","output":"Daftar kebutuhan logistik","status":"todo","kendala":"","next":""},{"no":8,"tahap":"Rapat Perdana","tanggal":"21/08/2026","divisi":"Konsumsi","pic":"Nadaa Fitria Hasyam","tugas":"Mengestimasi kebutuhan konsumsi peserta, panitia, dan pemateri","output":"Estimasi konsumsi","status":"todo","kendala":"","next":""},{"no":9,"tahap":"Progress I","tanggal":"29/08/2026","divisi":"Ketupel","pic":"Olivia Yulianti","tugas":"Review progres seluruh divisi dan menyelesaikan kendala lintas divisi","output":"Progress awal terukur","status":"todo","kendala":"","next":""},{"no":10,"tahap":"Progress I","tanggal":"29/08/2026","divisi":"Sekplak","pic":"Raisha Putri","tugas":"Memastikan administrasi, data peserta, dan arsip berjalan","output":"Administrasi minimal 60%","status":"todo","kendala":"","next":""},{"no":11,"tahap":"Progress I","tanggal":"29/08/2026","divisi":"Benplak","pic":"Dana Alpaji","tugas":"Memperbarui RAB berdasarkan kebutuhan aktual","output":"RAB diperbarui","status":"todo","kendala":"","next":""},{"no":12,"tahap":"Progress I","tanggal":"29/08/2026","divisi":"Acara","pic":"Ariq Al Fauzan","tugas":"Menyelesaikan draft rundown dan pembagian petugas","output":"Draft rundown","status":"todo","kendala":"","next":""},{"no":13,"tahap":"Progress I","tanggal":"29/08/2026","divisi":"Humas","pic":"Muhammad Bagas Firdaus","tugas":"Memastikan komunikasi awal dengan GSA/pemateri","output":"Konfirmasi awal","status":"todo","kendala":"","next":""},{"no":14,"tahap":"Progress I","tanggal":"29/08/2026","divisi":"Humas","pic":"Muhammad Bagas Firdaus","tugas":"Mengurus permohonan tanda tangan untuk dokumen/surat kepada Pembina, Ketua Pelaksana, dan Ketua Umum UKM UDC.","output":"Dokumen/surat terkait sudah ditandatangani Pembina, Ketua Pelaksana, dan Ketua Umum UKM UDC.","status":"todo","kendala":"","next":""},{"no":15,"tahap":"Progress I","tanggal":"29/08/2026","divisi":"PDD","pic":"Nadhif Alfasya","tugas":"Menyelesaikan draft identitas visual dan publikasi internal","output":"Draft aset PDD","status":"todo","kendala":"","next":""},{"no":16,"tahap":"Progress I","tanggal":"29/08/2026","divisi":"PDD","pic":"Nadhif Alfasya","tugas":"Menyiapkan desain dan spesifikasi spanduk kegiatan dengan ukuran 2,5 meter serta menyesuaikannya dengan identitas visual AITHON.","output":"Desain spanduk ukuran 2,5 meter siap untuk diproduksi.","status":"todo","kendala":"","next":""},{"no":17,"tahap":"Progress I","tanggal":"29/08/2026","divisi":"Logistik","pic":"Nadifur Rizky Romadona","tugas":"Memastikan opsi tempat, layout, dan perangkat","output":"Pemetaan teknis","status":"todo","kendala":"","next":""},{"no":18,"tahap":"Progress I","tanggal":"29/08/2026","divisi":"Konsumsi","pic":"Nadaa Fitria Hasyam","tugas":"Menentukan opsi konsumsi dan estimasi jumlah","output":"Pilihan konsumsi","status":"todo","kendala":"","next":""},{"no":19,"tahap":"Progress II","tanggal":"05/09/2026","divisi":"Ketupel","pic":"Olivia Yulianti","tugas":"Melakukan pengecekan progres lintas divisi","output":"Progress 70–80%","status":"todo","kendala":"","next":""},{"no":20,"tahap":"Progress II","tanggal":"05/09/2026","divisi":"Sekplak","pic":"Raisha Putri","tugas":"Finalisasi administrasi, absensi, peserta, dan sertifikat","output":"Administrasi 80%","status":"todo","kendala":"","next":""},{"no":21,"tahap":"Progress II","tanggal":"05/09/2026","divisi":"Benplak","pic":"Dana Alpaji","tugas":"Memastikan kebutuhan utama memiliki alokasi anggaran","output":"Anggaran terkendali","status":"todo","kendala":"","next":""},{"no":22,"tahap":"Progress II","tanggal":"05/09/2026","divisi":"Acara","pic":"Ariq Al Fauzan","tugas":"Menguji alur materi, praktik AI, challenge, MC, moderator, dan timekeeping","output":"Rundown teknis","status":"todo","kendala":"","next":""},{"no":23,"tahap":"Progress II","tanggal":"05/09/2026","divisi":"Humas","pic":"Muhammad Bagas Firdaus","tugas":"Mengunci komunikasi dengan GSA dan pemateri","output":"Konfirmasi utama","status":"todo","kendala":"","next":""},{"no":24,"tahap":"Progress II","tanggal":"05/09/2026","divisi":"Humas","pic":"Muhammad Bagas Firdaus","tugas":"Menghubungi dan menyampaikan surat undangan kepada Wakil Rektor III (WR III) serta Pembina UKM UDC.","output":"Surat undangan tersampaikan dan terdapat konfirmasi penerimaan/kehadiran.","status":"todo","kendala":"","next":""},{"no":25,"tahap":"Progress II","tanggal":"05/09/2026","divisi":"PDD","pic":"Nadhif Alfasya","tugas":"Menyiapkan poster, sertifikat, PPT, dan kebutuhan dokumentasi","output":"Aset produksi","status":"todo","kendala":"","next":""},{"no":26,"tahap":"Progress II","tanggal":"05/09/2026","divisi":"PDD","pic":"Nadhif Alfasya","tugas":"Membeli/mencetak spanduk kegiatan dengan ukuran 2,5 meter dan memastikan hasil cetak sesuai desain.","output":"Spanduk ukuran 2,5 meter sudah tersedia dan siap digunakan.","status":"todo","kendala":"","next":""},{"no":27,"tahap":"Progress II","tanggal":"05/09/2026","divisi":"PDD","pic":"Nadhif Alfasya","tugas":"Membuat desain sertifikat untuk moderator, narasumber, OC, panitia, dan peserta.","output":"Template sertifikat untuk moderator, narasumber, OC, panitia, dan peserta siap digunakan.","status":"todo","kendala":"","next":""},{"no":28,"tahap":"Progress II","tanggal":"05/09/2026","divisi":"Logistik","pic":"Nadifur Rizky Romadona","tugas":"Memastikan perangkat utama dan cadangan tersedia","output":"Technical readiness","status":"todo","kendala":"","next":""},{"no":29,"tahap":"Progress II","tanggal":"05/09/2026","divisi":"Konsumsi","pic":"Nadaa Fitria Hasyam","tugas":"Mengunci jumlah, vendor, harga, dan distribusi","output":"Konsumsi siap","status":"todo","kendala":"","next":""},{"no":30,"tahap":"Progress III","tanggal":"10/09/2026","divisi":"Ketupel","pic":"Olivia Yulianti","tugas":"Quality control terakhir dan menetapkan pekerjaan yang masih tertunda","output":"Minimal 90% pekerjaan selesai","status":"todo","kendala":"","next":""},{"no":31,"tahap":"Progress III","tanggal":"10/09/2026","divisi":"Sekplak","pic":"Raisha Putri","tugas":"Memastikan seluruh dokumen utama siap digunakan","output":"Dokumen 90–100%","status":"todo","kendala":"","next":""},{"no":32,"tahap":"Progress III","tanggal":"10/09/2026","divisi":"Benplak","pic":"Dana Alpaji","tugas":"Merapikan rekap transaksi dan kebutuhan pembayaran","output":"Keuangan siap fiksasi","status":"todo","kendala":"","next":""},{"no":33,"tahap":"Progress III","tanggal":"10/09/2026","divisi":"Acara","pic":"Ariq Al Fauzan","tugas":"Mengunci draft alur acara dan contingency plan","output":"Rundown final draft","status":"todo","kendala":"","next":""},{"no":34,"tahap":"Progress III","tanggal":"10/09/2026","divisi":"Humas","pic":"Muhammad Bagas Firdaus","tugas":"Menyelesaikan seluruh konfirmasi pihak terkait","output":"Konfirmasi final","status":"todo","kendala":"","next":""},{"no":35,"tahap":"Progress III","tanggal":"10/09/2026","divisi":"PDD","pic":"Nadhif Alfasya","tugas":"Final check seluruh aset publikasi, PPT, dan dokumentasi","output":"File siap","status":"todo","kendala":"","next":""},{"no":36,"tahap":"Progress III","tanggal":"10/09/2026","divisi":"PDD","pic":"Nadhif Alfasya","tugas":"Melakukan final check data penerima dan kesiapan sertifikat untuk moderator, narasumber, OC, panitia, dan peserta.","output":"Data sertifikat tervalidasi dan sertifikat siap dicetak/dibagikan.","status":"todo","kendala":"","next":""},{"no":37,"tahap":"Progress III","tanggal":"10/09/2026","divisi":"Logistik","pic":"Nadifur Rizky Romadona","tugas":"Menyelesaikan technical checklist","output":"Teknis 90%+","status":"todo","kendala":"","next":""},{"no":38,"tahap":"Progress III","tanggal":"10/09/2026","divisi":"Konsumsi","pic":"Nadaa Fitria Hasyam","tugas":"Mengunci jumlah dan jadwal distribusi","output":"Konsumsi final draft","status":"todo","kendala":"","next":""},{"no":39,"tahap":"Fiksasi","tanggal":"13/09/2026","divisi":"Ketupel","pic":"Olivia Yulianti","tugas":"Mengunci seluruh keputusan utama kegiatan","output":"Seluruh keputusan FINAL","status":"todo","kendala":"","next":""},{"no":40,"tahap":"Fiksasi","tanggal":"13/09/2026","divisi":"Sekplak","pic":"Raisha Putri","tugas":"Mengunci dokumen dan database Hari-H","output":"Administrasi FINAL","status":"todo","kendala":"","next":""},{"no":41,"tahap":"Fiksasi","tanggal":"13/09/2026","divisi":"Benplak","pic":"Dana Alpaji","tugas":"Mengunci RAB dan pembayaran prioritas","output":"Anggaran FINAL","status":"todo","kendala":"","next":""},{"no":42,"tahap":"Fiksasi","tanggal":"13/09/2026","divisi":"Acara","pic":"Ariq Al Fauzan","tugas":"Mengunci rundown, script, petugas, praktik, dan challenge","output":"Rundown FINAL","status":"todo","kendala":"","next":""},{"no":43,"tahap":"Fiksasi","tanggal":"13/09/2026","divisi":"Humas","pic":"Muhammad Bagas Firdaus","tugas":"Mengunci komunikasi GSA/pemateri","output":"Konfirmasi FINAL","status":"todo","kendala":"","next":""},{"no":44,"tahap":"Fiksasi","tanggal":"13/09/2026","divisi":"PDD","pic":"Nadhif Alfasya","tugas":"Mengunci desain, PPT, sertifikat, dan backup","output":"Aset FINAL","status":"todo","kendala":"","next":""},{"no":45,"tahap":"Fiksasi","tanggal":"13/09/2026","divisi":"Logistik","pic":"Nadifur Rizky Romadona","tugas":"Mengunci tempat, layout, alat, dan backup","output":"Teknis FINAL","status":"todo","kendala":"","next":""},{"no":46,"tahap":"Fiksasi","tanggal":"13/09/2026","divisi":"Konsumsi","pic":"Nadaa Fitria Hasyam","tugas":"Mengunci vendor, jumlah, dan distribusi","output":"Konsumsi FINAL","status":"todo","kendala":"","next":""},{"no":47,"tahap":"Gladi Bersih","tanggal":"18/09/2026","divisi":"Ketupel","pic":"Olivia Yulianti","tugas":"Memimpin simulasi penuh dan mencatat perbaikan terakhir","output":"Gladi selesai","status":"todo","kendala":"","next":""},{"no":48,"tahap":"Gladi Bersih","tanggal":"18/09/2026","divisi":"Sekplak","pic":"Raisha Putri","tugas":"Simulasi administrasi dan absensi","output":"Dokumen Hari-H siap","status":"todo","kendala":"","next":""},{"no":49,"tahap":"Gladi Bersih","tanggal":"18/09/2026","divisi":"Benplak","pic":"Dana Alpaji","tugas":"Menyiapkan dana operasional Hari-H","output":"Dana siap","status":"todo","kendala":"","next":""},{"no":50,"tahap":"Gladi Bersih","tanggal":"18/09/2026","divisi":"Acara","pic":"Ariq Al Fauzan","tugas":"Simulasi penuh dari pembukaan sampai penutupan","output":"Semua petugas memahami alur","status":"todo","kendala":"","next":""},{"no":51,"tahap":"Gladi Bersih","tanggal":"18/09/2026","divisi":"Humas","pic":"Muhammad Bagas Firdaus","tugas":"Memastikan kontak dan kedatangan GSA/pemateri","output":"Kontak Hari-H siap","status":"todo","kendala":"","next":""},{"no":52,"tahap":"Gladi Bersih","tanggal":"18/09/2026","divisi":"PDD","pic":"Nadhif Alfasya","tugas":"Tes kamera, PPT, dokumentasi, dan backup","output":"Teknis PDD siap","status":"todo","kendala":"","next":""},{"no":53,"tahap":"Gladi Bersih","tanggal":"18/09/2026","divisi":"Logistik","pic":"Nadifur Rizky Romadona","tugas":"Tes audio, proyektor, internet, listrik, dan layout","output":"Teknis teruji","status":"todo","kendala":"","next":""},{"no":54,"tahap":"Gladi Bersih","tanggal":"18/09/2026","divisi":"Konsumsi","pic":"Nadaa Fitria Hasyam","tugas":"Simulasi penerimaan dan distribusi konsumsi","output":"Distribusi siap","status":"todo","kendala":"","next":""},{"no":55,"tahap":"Hari-H","tanggal":"19/09/2026","divisi":"Ketupel","pic":"Olivia Yulianti","tugas":"Monitoring keseluruhan pelaksanaan AITHON","output":"Acara berjalan sesuai rundown","status":"todo","kendala":"","next":""},{"no":56,"tahap":"Hari-H","tanggal":"19/09/2026","divisi":"Sekplak","pic":"Raisha Putri","tugas":"Mengelola administrasi, absensi, dan kebutuhan dokumen","output":"Administrasi Hari-H","status":"todo","kendala":"","next":""},{"no":57,"tahap":"Hari-H","tanggal":"19/09/2026","divisi":"Benplak","pic":"Dana Alpaji","tugas":"Mengelola kebutuhan pembayaran dan transaksi Hari-H","output":"Keuangan Hari-H","status":"todo","kendala":"","next":""},{"no":58,"tahap":"Hari-H","tanggal":"19/09/2026","divisi":"Acara","pic":"Ariq Al Fauzan","tugas":"Mengawal seluruh rundown dan koordinasi petugas","output":"Rundown berjalan","status":"todo","kendala":"","next":""},{"no":59,"tahap":"Hari-H","tanggal":"19/09/2026","divisi":"Humas","pic":"Muhammad Bagas Firdaus","tugas":"Mendampingi GSA/pemateri dan komunikasi eksternal","output":"Pemateri terlayani","status":"todo","kendala":"","next":""},{"no":60,"tahap":"Hari-H","tanggal":"19/09/2026","divisi":"PDD","pic":"Nadhif Alfasya","tugas":"Dokumentasi dan pengelolaan file kegiatan","output":"Dokumentasi lengkap","status":"todo","kendala":"","next":""},{"no":61,"tahap":"Hari-H","tanggal":"19/09/2026","divisi":"Logistik","pic":"Nadifur Rizky Romadona","tugas":"Mengawal kebutuhan teknis selama acara","output":"Teknis aman","status":"todo","kendala":"","next":""},{"no":62,"tahap":"Hari-H","tanggal":"19/09/2026","divisi":"Konsumsi","pic":"Nadaa Fitria Hasyam","tugas":"Distribusi konsumsi sesuai jadwal","output":"Konsumsi terdistribusi","status":"todo","kendala":"","next":""}];
+/* Checklist. Daftar tugas dibaca langsung dari spreadsheet; `CK_DATA` dan `CK_CSV`
+   disuntikkan saat build sebagai salinan cadangan kalau spreadsheet tidak terbaca.
 
-   Penyimpanan sengaja dipisah di balik `ckSimpan`/`ckMuat` supaya nanti tinggal
-   ditukar ke Firebase tanpa menyentuh bagian render: bentuk datanya sudah sama
-   dengan yang dipakai situs Checklist asli — { no: {status, updatedAt} }. */
-const CK_SIMPAN="aithon.checklist.v1";
-let ckState={};
+   Aturan status, dirancang supaya tidak ada yang pernah mundur saat halaman dimuat ulang:
+   status yang tampil = yang PALING MAJU antara isi spreadsheet dan tandaan lokal.
+   Jadi centangan di halaman tidak terhapus oleh sheet yang masih "Belum Mulai",
+   dan sheet yang sudah "Selesai" tidak tertimpa tandaan lokal yang lebih rendah. */
+const CK_SIMPAN="aithon.checklist.v2";
+let ckData=CK_DATA.slice();
+let ckLokal={};
+let ckLive=false,ckWaktu=null,ckMuatJalan=false;
 const ckTerbuka=new Set();
 
-function ckMuat(){
+function ckMuatLokal(){
   try{
     const isi=JSON.parse(localStorage.getItem(CK_SIMPAN)||"{}");
     return isi&&typeof isi==="object"?isi:{};
   }catch(e){ return {}; }
 }
-function ckSimpan(){
-  try{ localStorage.setItem(CK_SIMPAN,JSON.stringify(ckState)); }
+function ckSimpanLokal(){
+  try{ localStorage.setItem(CK_SIMPAN,JSON.stringify(ckLokal)); }
   catch(e){ /* penyimpanan ditolak — halaman tetap jalan, hanya tidak diingat */ }
 }
 
 const ckEsc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const ckStatus=no=>(ckState[no]&&ckState[no].status)||"todo";
+const ckJam=t=>t.toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"});
+
+/* Status efektif = yang paling maju antara sheet dan lokal. */
+function ckStatus(it){
+  const lokal=ckLokal[ckKunci(it)];
+  const a=CK_TINGKAT[it.status]||0;
+  const b=lokal?(CK_TINGKAT[lokal.status]||0):0;
+  return b>a?lokal.status:it.status;
+}
+function ckWaktuUbah(it){
+  const lokal=ckLokal[ckKunci(it)];
+  return lokal&&lokal.updatedAt?lokal.updatedAt:null;
+}
+
+function ckSetStatus(chip,pesan){
+  const el=document.getElementById("ckStatusChip");
+  if(!el) return;
+  el.className="rab-status "+chip;
+  el.textContent=pesan;
+}
 
 function ckTahapan(){
   const urut=[],peta={};
-  CK_DATA.forEach(it=>{
+  ckData.forEach(it=>{
     if(!peta[it.tahap]){ peta[it.tahap]={tahap:it.tahap,tanggal:it.tanggal,items:[]}; urut.push(peta[it.tahap]); }
     peta[it.tahap].items.push(it);
   });
@@ -1210,8 +1305,8 @@ function ckRender(){
   let selesaiTotal=0,tahapTuntas=0,html="";
 
   tahapan.forEach((g,gi)=>{
-    const selesai=g.items.filter(it=>ckStatus(it.no)==="done").length;
-    const jalan=g.items.filter(it=>ckStatus(it.no)==="progress").length;
+    const selesai=g.items.filter(it=>ckStatus(it)==="done").length;
+    const jalan=g.items.filter(it=>ckStatus(it)==="progress").length;
     selesaiTotal+=selesai;
     const pct=Math.round(selesai/g.items.length*100);
     if(pct===100) tahapTuntas++;
@@ -1233,11 +1328,10 @@ function ckRender(){
         </span>
       </button>
       <div class="ck-body">${g.items.map(it=>{
-        const st=ckStatus(it.no);
+        const st=ckStatus(it);
         const kunci=st==="done", jalan=st==="progress";
-        const waktu=ckState[it.no]&&ckState[it.no].updatedAt
-          ? new Date(ckState[it.no].updatedAt).toLocaleString("id-ID",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})
-          : "";
+        const w=ckWaktuUbah(it);
+        const waktu=w?new Date(w).toLocaleString("id-ID",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):"";
         return `<div class="ck-item${kunci?" done":""}">
           <button type="button" class="ck-box${kunci?" on":""}" data-selesai="${it.no}"${kunci?' disabled aria-label="Sudah selesai"':' aria-label="Tandai selesai"'}>${ckCentang}</button>
           <div class="ck-main">
@@ -1247,7 +1341,9 @@ function ckRender(){
               <span class="ck-pic">${ckEsc(it.pic)}</span>
             </div>
             <div class="ck-tugas">${ckEsc(it.tugas)}</div>
-            <div class="ck-output"><b>Output:</b> ${ckEsc(it.output)}</div>
+            ${it.output?`<div class="ck-output"><b>Output:</b> ${ckEsc(it.output)}</div>`:""}
+            ${it.kendala?`<div class="ck-catatan kendala"><b>Kendala:</b> ${ckEsc(it.kendala)}</div>`:""}
+            ${it.next?`<div class="ck-catatan next"><b>Next:</b> ${ckEsc(it.next)}</div>`:""}
             <div class="ck-actions">
               <button type="button" class="ck-pill${jalan?" jalan":""}" data-jalan="${it.no}"${kunci?" disabled":""}><i></i>${jalan?"Lagi dikerjain":"Belum mulai"}</button>
               ${kunci
@@ -1261,19 +1357,60 @@ function ckRender(){
   });
 
   wadah.innerHTML=html;
-  const total=CK_DATA.length;
+  const total=ckData.length;
   const pct=total?Math.round(selesaiTotal/total*100):0;
   document.getElementById("ckPct").textContent=pct+"%";
   document.getElementById("ckBar").style.width=pct+"%";
   document.getElementById("ckDone").textContent=selesaiTotal;
   document.getElementById("ckTotal").textContent=total;
   document.getElementById("ckStage").textContent=tahapTuntas+"/"+tahapan.length;
+  document.getElementById("ckSumber").textContent=ckLive
+    ? `Daftar tugas dibaca dari spreadsheet pukul ${ckJam(ckWaktu)}.`
+    : "Menampilkan salinan daftar tugas yang tersimpan di halaman.";
 }
 
-function ckSet(no,status){
-  ckState[no]={status,updatedAt:new Date().toISOString()};
-  ckSimpan();
+function ckCariItem(no){ return ckData.find(x=>x.no===no); }
+
+function ckTandai(no,status){
+  const it=ckCariItem(no);
+  if(!it) return;
+  ckLokal[ckKunci(it)]={status,updatedAt:new Date().toISOString()};
+  ckSimpanLokal();
   ckRender();
+}
+
+async function ckMuatSheet(manual){
+  if(ckMuatJalan) return;
+  ckMuatJalan=true;
+  const tombol=document.getElementById("ckReload");
+  if(tombol) tombol.disabled=true;
+  ckSetStatus("memuat","Memuat…");
+  try{
+    const res=await fetch(`${CK_CSV}&_=${Date.now()}`,{cache:"no-store"});
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    const segar=ckBaca(await res.text());
+    ckData=segar;
+    ckLive=true;
+    ckWaktu=new Date();
+    // Tahap yang sudah dibuka dipertahankan; kalau tidak ada, buka yang belum tuntas.
+    if(!ckTerbuka.size) ckBukaTahapAwal();
+    ckRender();
+    ckSetStatus("live",`Tersambung • ${ckJam(ckWaktu)}`);
+  }catch(err){
+    ckLive=false;
+    ckRender();
+    ckSetStatus("luring",manual?"Spreadsheet tidak terbaca — coba lagi sebentar":"Salinan tersimpan");
+  }finally{
+    ckMuatJalan=false;
+    if(tombol) tombol.disabled=false;
+  }
+}
+
+function ckBukaTahapAwal(){
+  const tahapan=ckTahapan();
+  if(!tahapan.length) return;
+  const belum=tahapan.find(g=>g.items.some(it=>ckStatus(it)!=="done"));
+  ckTerbuka.add((belum||tahapan[0]).tahap);
 }
 
 document.getElementById("ckStages").addEventListener("click",ev=>{
@@ -1288,27 +1425,31 @@ document.getElementById("ckStages").addEventListener("click",ev=>{
   if(selesai&&!selesai.disabled){
     const no=Number(selesai.dataset.selesai);
     // Status selesai mengunci permanen, jadi tanya dulu — satu salah klik tidak bisa dibatalkan.
-    if(window.confirm("Tandai tugas #"+no+" sebagai selesai?\n\nSetelah ditandai, statusnya terkunci dan tidak bisa diubah lagi."))
-      ckSet(no,"done");
+    if(window.confirm("Tandai tugas #"+no+" sebagai selesai?\n\nSetelah ditandai, statusnya terkunci dan tidak bisa diubah lagi dari halaman ini."))
+      ckTandai(no,"done");
     return;
   }
   const jalan=ev.target.closest("[data-jalan]");
   if(jalan&&!jalan.disabled){
     const no=Number(jalan.dataset.jalan);
-    ckSet(no,ckStatus(no)==="progress"?"todo":"progress");
+    const it=ckCariItem(no);
+    ckTandai(no,ckStatus(it)==="progress"?"todo":"progress");
   }
 });
 
-ckState=ckMuat();
-// Buka tahap pertama yang belum tuntas supaya panitia langsung lihat yang sedang berjalan.
-{
-  const tahapan=ckTahapan();
-  const belum=tahapan.find(g=>g.items.some(it=>ckStatus(it.no)!=="done"));
-  ckTerbuka.add((belum||tahapan[0]).tahap);
-}
-document.getElementById("ckSimpanNote").textContent=
-  "Status \"Lagi dikerjain\" bebas diubah bolak-balik. Status \"Selesai\" mengunci permanen, jadi ada konfirmasi dulu sebelum dikunci. Catatan ini tersimpan di browser ini saja — belum tersambung antar-perangkat.";
+ckLokal=ckMuatLokal();
+ckBukaTahapAwal();
 ckRender();
+ckSetStatus("luring","Salinan tersimpan");
+document.getElementById("ckReload").addEventListener("click",()=>ckMuatSheet(true));
+document.getElementById("ckLink").href=CK_SHEET;
+ckMuatSheet(false);
+
+// Segarkan saat tab Checklist dibuka lagi, paling sering sekali per menit.
+let ckTerakhir=Date.now();
+document.querySelector('.nav button[onclick*="checklist"]').addEventListener("click",()=>{
+  if(Date.now()-ckTerakhir>60000){ ckTerakhir=Date.now(); ckMuatSheet(false); }
+});
 
 </script>
 
