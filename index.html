@@ -296,6 +296,12 @@ main, section, article, .card, .timeline, .division-card, .content, .container {
 .ck-catatan.kendala{background:#fdf1f1;color:#8a3a3a}
 .ck-catatan.next{background:#f1f5fd;color:#3a527f}
 .ck-head{align-items:flex-start}
+.ck-pribadi-box{margin-top:14px;padding:12px 15px;border-radius:13px;background:#fdf6e6;border:1px dashed #e0c98c;color:#7d6218;font-size:10px;line-height:1.6}
+.ck-pribadi-box b{display:block;margin-bottom:3px;font-size:9px;letter-spacing:.6px;text-transform:uppercase}
+.ck-pribadi{padding:6px 10px;border-radius:99px;font-size:8.5px;font-weight:700;background:#fdf6e6;border:1px dashed #e0c98c;color:#7d6218}
+.ck-item.ditandai{border-style:dashed;border-color:#e0c98c}
+.ck-box.pribadi{border-style:dashed;border-color:#e0c98c;background:#fdf6e6}
+.ck-box.pribadi svg{opacity:.55}
 /* ===== Perbaikan tampilan layar sempit =====
    Diukur di viewport 375px: halaman meluber 503px ke kanan. Penyebab utamanya
    .nav (850px dipaksa ke dalam 319px karena flex-wrap:nowrap) dan header yang
@@ -443,7 +449,8 @@ img{max-width:100%;height:auto}
 <section id="final" class="page">
 <div class="card" style="margin-bottom:18px">
 <h2 style="color:var(--maroon);margin:0 0 6px">Fiksasi & Kontrol Semua Divisi</h2>
-<p style="font-size:11px;color:var(--grey);margin:0 0 16px">Satu dashboard untuk semua divisi. Centang item yang sudah aman, lalu cek lagi progresnya saat fiksasi dan gladi.</p>
+<p style="font-size:11px;color:var(--grey);margin:0 0 6px">Satu dashboard untuk semua divisi. Centang item yang sudah aman, lalu cek lagi progresnya saat fiksasi dan gladi.</p>
+<p style="font-size:10px;color:var(--plum);font-weight:600;margin:0 0 16px">Catatan pribadi di perangkat ini — <span id="boxHitung">0 dari 0 tercentang di perangkat ini</span>. Bar di kepala halaman mengikuti progress bersama dari spreadsheet.</p>
 <div class="check" id="checks">
 <label><input type="checkbox"><span><b>ACARA — Rundown & Alur</b><small>Rundown final, pembagian petugas, MC, moderator, durasi setiap sesi, praktik prompting, AI Challenge, dan alur perpindahan agenda sudah fix.</small></span></label>
 <label><input type="checkbox"><span><b>ACARA — Materi & Pemateri</b><small>Materi GSA/pemateri sudah final, kebutuhan presentasi sudah dikonfirmasi, dan teknis penyampaian sudah dicek bareng.</small></span></label>
@@ -762,7 +769,7 @@ img{max-width:100%;height:auto}
 
     <div class="ck-stats">
       <div class="ck-stat total">
-        <b>Progress Keseluruhan</b>
+        <b>Progress Bersama</b>
         <span id="ckPct">0%</span>
         <div class="ck-bar"><i id="ckBar"></i></div>
       </div>
@@ -771,12 +778,19 @@ img{max-width:100%;height:auto}
       <div class="ck-stat"><b>Tahap Tuntas</b><span id="ckStage">0/0</span></div>
     </div>
 
+    <div class="ck-pribadi-box" id="ckPribadiBox" hidden>
+      <b>🔖 Tandaan kamu di perangkat ini</b>
+      <span id="ckPribadiTeks"></span>
+    </div>
+
     <div class="ck-note">
       <b>Cara status dihitung</b>
-      Status yang tampil adalah yang <b>paling maju</b> antara kolom Status di spreadsheet dan
-      tandaan di halaman ini — jadi tidak ada yang mundur saat halaman dimuat ulang. Tandaan di
-      halaman tersimpan di browser masing-masing; untuk catatan yang dilihat semua panitia,
-      isi kolom <b>Status</b>, <b>Kendala</b>, dan <b>Next Action</b> di spreadsheet.
+      Angka progress di halaman ini dihitung dari kolom <b>Status</b> di spreadsheet, jadi
+      <b>semua orang yang membuka link melihat angka yang sama</b>. Tandaan lewat tombol di
+      halaman hanya tersimpan di browser masing-masing sebagai catatan pribadi — tidak hilang
+      saat halaman dimuat ulang, tapi tidak ikut menaikkan angka bersama. Untuk menaikkan
+      progress yang dilihat semua panitia, ubah kolom <b>Status</b> di spreadsheet menjadi
+      <b>Sedang Dikerjakan</b> atau <b>Selesai</b>.
     </div>
   </div>
 
@@ -1000,12 +1014,13 @@ function boxTulis(){
   }catch(e){ /* penyimpanan ditolak — halaman tetap jalan */ }
 }
 
+/* Bar di kepala halaman sekarang menampilkan progress bersama dari spreadsheet
+   (lihat ckRender), bukan kotak centang ini. Kotak di tab Fiksasi tetap alat bantu
+   pribadi, jadi hitungannya ditampilkan di tempatnya sendiri. */
 function updateProgress(){
   const done=boxSemua.filter(x=>x.checked).length;
-  const pct=boxSemua.length?Math.round(done/boxSemua.length*100):0;
-  const bar=document.getElementById("bar"), label=document.getElementById("pct");
-  if(bar) bar.style.width=pct+"%";
-  if(label) label.textContent=pct+"% selesai";
+  const el=document.getElementById("boxHitung");
+  if(el) el.textContent=done+" dari "+boxSemua.length+" tercentang di perangkat ini";
 }
 
 try{
@@ -1268,12 +1283,15 @@ function ckSimpanLokal(){
 const ckEsc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const ckJam=t=>t.toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"});
 
-/* Status efektif = yang paling maju antara sheet dan lokal. */
-function ckStatus(it){
-  const lokal=ckLokal[ckKunci(it)];
-  const a=CK_TINGKAT[it.status]||0;
-  const b=lokal?(CK_TINGKAT[lokal.status]||0):0;
-  return b>a?lokal.status:it.status;
+/* Status BERSAMA — inilah yang dihitung jadi angka progress, sama untuk semua orang. */
+function ckStatus(it){ return it.status; }
+
+/* Tandaan PRIBADI di perangkat ini. Ditampilkan, tapi tidak ikut dihitung, supaya
+   angka yang dilihat pembaca link tidak berbeda-beda per orang. */
+function ckPribadi(it){
+  const l=ckLokal[ckKunci(it)];
+  if(!l) return null;
+  return (CK_TINGKAT[l.status]||0)>(CK_TINGKAT[it.status]||0)?l.status:null;
 }
 function ckWaktuUbah(it){
   const lokal=ckLokal[ckKunci(it)];
@@ -1328,12 +1346,14 @@ function ckRender(){
         </span>
       </button>
       <div class="ck-body">${g.items.map(it=>{
-        const st=ckStatus(it);
+        const st=ckStatus(it);                 // dari spreadsheet — dilihat semua orang
+        const pri=ckPribadi(it);               // tandaan di perangkat ini saja
         const kunci=st==="done", jalan=st==="progress";
         const w=ckWaktuUbah(it);
         const waktu=w?new Date(w).toLocaleString("id-ID",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):"";
-        return `<div class="ck-item${kunci?" done":""}">
-          <button type="button" class="ck-box${kunci?" on":""}" data-selesai="${it.no}"${kunci?' disabled aria-label="Sudah selesai"':' aria-label="Tandai selesai"'}>${ckCentang}</button>
+        const labelPri=pri==="done"?"Kamu tandai selesai":"Kamu tandai lagi dikerjain";
+        return `<div class="ck-item${kunci?" done":""}${pri?" ditandai":""}">
+          <button type="button" class="ck-box${kunci?" on":""}${pri==="done"?" pribadi":""}" data-selesai="${it.no}"${kunci?' disabled aria-label="Sudah selesai menurut spreadsheet"':' aria-label="Tandai selesai (catatan pribadi)"'}>${ckCentang}</button>
           <div class="ck-main">
             <div class="ck-top">
               <span class="ck-no">#${it.no}</span>
@@ -1347,8 +1367,9 @@ function ckRender(){
             <div class="ck-actions">
               <button type="button" class="ck-pill${jalan?" jalan":""}" data-jalan="${it.no}"${kunci?" disabled":""}><i></i>${jalan?"Lagi dikerjain":"Belum mulai"}</button>
               ${kunci
-                ? `<span class="ck-locked">🔒 Selesai${waktu?" · "+waktu:""}</span>`
+                ? `<span class="ck-locked">🔒 Selesai · spreadsheet</span>`
                 : `<button type="button" class="ck-done-btn" data-selesai="${it.no}">Tandai selesai</button>`}
+              ${pri&&!kunci?`<span class="ck-pribadi">🔖 ${labelPri}${waktu?" · "+waktu:""}</span>`:""}
             </div>
           </div>
         </div>`;
@@ -1365,8 +1386,23 @@ function ckRender(){
   document.getElementById("ckTotal").textContent=total;
   document.getElementById("ckStage").textContent=tahapTuntas+"/"+tahapan.length;
   document.getElementById("ckSumber").textContent=ckLive
-    ? `Daftar tugas dibaca dari spreadsheet pukul ${ckJam(ckWaktu)}.`
-    : "Menampilkan salinan daftar tugas yang tersimpan di halaman.";
+    ? `Angka di bawah dibaca dari kolom Status di spreadsheet pukul ${ckJam(ckWaktu)}, jadi sama untuk semua orang.`
+    : "Spreadsheet belum terbaca — menampilkan salinan yang tersimpan di halaman.";
+
+  // Bar di kepala halaman memakai angka yang sama, supaya satu halaman satu angka.
+  const bar=document.getElementById("bar"), label=document.getElementById("pct");
+  if(bar) bar.style.width=pct+"%";
+  if(label) label.textContent=`${pct}% selesai • ${selesaiTotal}/${total} tugas`;
+
+  // Ringkasan tandaan pribadi, dipisah jelas dari angka bersama.
+  const pribadiSelesai=ckData.filter(it=>ckPribadi(it)==="done").length;
+  const pribadiJalan=ckData.filter(it=>ckPribadi(it)==="progress").length;
+  const kotak=document.getElementById("ckPribadiBox");
+  if(kotak){
+    kotak.hidden=!(pribadiSelesai||pribadiJalan);
+    document.getElementById("ckPribadiTeks").textContent=
+      `${pribadiSelesai} ditandai selesai${pribadiJalan?`, ${pribadiJalan} ditandai lagi dikerjain`:""} di perangkat ini — belum masuk hitungan bersama. Supaya terhitung untuk semua panitia, ubah kolom Status di spreadsheet.`;
+  }
 }
 
 function ckCariItem(no){ return ckData.find(x=>x.no===no); }
