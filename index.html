@@ -302,6 +302,21 @@ main, section, article, .card, .timeline, .division-card, .content, .container {
 .ck-item.ditandai{border-style:dashed;border-color:#e0c98c}
 .ck-box.pribadi{border-style:dashed;border-color:#e0c98c;background:#fdf6e6}
 .ck-box.pribadi svg{opacity:.55}
+.jadwal-jam{display:inline-block;margin:0 0 9px;padding:6px 12px;border-radius:99px;background:var(--lav);color:var(--maroon);font-size:10px;font-weight:700;letter-spacing:.3px}
+.jadwal-list{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.jadwal-baris{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 12px;border-radius:10px;background:var(--cream);border:1px solid #eee7ea}
+.jadwal-baris b{color:var(--maroon);font-size:11px}
+.jadwal-baris span{color:var(--plum);font-size:10px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.jadwal-tabel{width:100%;border-collapse:collapse;font-size:11px;min-width:440px}
+.jadwal-tabel th{text-align:left;padding:8px 10px;font-size:8.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--grey);font-weight:700;border-bottom:1px solid #eee7ea}
+.jadwal-tabel td{padding:9px 10px;border-bottom:1px solid #f2ebee;vertical-align:middle;line-height:1.45;color:#514b4f}
+.jadwal-tabel td:first-child{color:var(--maroon);font-weight:700;white-space:nowrap;width:104px;vertical-align:top;padding-top:11px}
+.jadwal-tabel td:last-child{color:var(--plum);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;width:130px}
+.jadwal-tabel tr.utama td{background:#fbf5f8;font-weight:700;color:var(--maroon)}
+.jadwal-tabel tr.hari-h td{background:var(--maroon);color:#fff}
+.jadwal-tabel tr.hari-h td:first-child,.jadwal-tabel tr.hari-h td:last-child{color:#fff}
+.jadwal-catatan{margin-top:14px;padding:13px 16px;border-radius:13px;background:var(--mint);color:var(--maroon);font-size:10px;line-height:1.65}
+.jadwal-catatan b{display:block;margin-bottom:3px;font-size:9px;letter-spacing:.7px;text-transform:uppercase}
 /* ===== Perbaikan tampilan layar sempit =====
    Diukur di viewport 375px: halaman meluber 503px ke kanan. Penyebab utamanya
    .nav (850px dipaksa ke dalam 319px karena flex-wrap:nowrap) dan header yang
@@ -404,7 +419,7 @@ img{max-width:100%;height:auto}
     <div class="timeline-item"><div class="tdate" style="background:var(--plum)">29 AGT</div><div class="tbody"><h3>PROGRESS I</h3><p>Memastikan semua divisi sudah mulai menghasilkan output nyata: konsep sesi dan rundown, finalisasi kebutuhan bersama GSA, identitas visual, venue, kebutuhan teknis, administrasi, RAB, serta konsumsi.</p></div></div>
     <div class="timeline-item"><div class="tdate" style="background:var(--gold)">05 SEP</div><div class="tbody"><h3>PROGRESS II</h3><p>Masuk tahap produksi: rundown makin rinci, PJ hari-H mulai ditetapkan, komunikasi pemateri dan moderator berjalan, publikasi serta kebutuhan teknis diproduksi, dan kebutuhan utama mulai diamankan.</p></div></div>
     <div class="timeline-item"><div class="tdate" style="background:var(--plum)">10 SEP</div><div class="tbody"><h3>PROGRESS III</h3><p>Quality control terakhir sebelum fiksasi. Target minimal 85–90%; seluruh pekerjaan yang belum aman wajib memiliki solusi, PIC, dan deadline yang jelas.</p></div></div>
-    <div class="timeline-item"><div class="tdate" style="background:var(--gold)">13 SEP</div><div class="tbody"><h3>FIKSASI</h3><p>Seluruh keputusan final dikunci: rundown, pemateri, moderator, praktik, challenge, venue, perangkat, PDD, konsumsi, administrasi, dan pembagian tugas Hari-H.</p></div></div>
+    <div class="timeline-item"><div class="tdate" style="background:var(--gold)">15 SEP</div><div class="tbody"><h3>FIKSASI</h3><p>Seluruh keputusan final dikunci: rundown, pemateri, moderator, praktik, challenge, venue, perangkat, PDD, konsumsi, administrasi, dan pembagian tugas Hari-H.</p></div></div>
     <div class="timeline-item"><div class="tdate" style="background:var(--plum)">18 SEP</div><div class="tbody"><h3>GLADI BERSIH</h3><p>Simulasi penuh dari registrasi sampai penutupan. Semua petugas, alat, materi, praktik AI, challenge, dokumentasi, dan perpindahan agenda diuji.</p></div></div>
     <div class="timeline-item"><div class="tdate">19 SEP</div><div class="tbody"><h3>HARI-H • EXECUTE</h3><p>AITHON berlangsung 09.00–12.30 WIB. Ketupel fokus: Monitor → Coordinate → Decide → Solve.</p></div></div>
   </div>
@@ -432,19 +447,51 @@ img{max-width:100%;height:auto}
   </div>
 
   <div class="card" style="margin-top:16px">
-    <div class="info-kicker">POLA RAPAT YANG DIPAKAI</div>
-    <div class="calendar-roadmap">
-      <div><b>01 • 21 AGT</b><span>Rapat Perdana</span><small>Kick-off, struktur, PIC, output awal, dan timeline kerja.</small></div>
-      <div><b>02 • 29 AGT</b><span>Progress I</span><small>Semua divisi sudah bergerak dan menghasilkan output awal.</small></div>
-      <div><b>03 • 05 SEP</b><span>Progress II</span><small>Produksi berjalan dan kebutuhan utama mulai diamankan.</small></div>
-      <div><b>04 • 10 SEP</b><span>Progress III</span><small>Quality control terakhir dengan target minimal 85–90%.</small></div>
-      <div><b>05 • 13 SEP</b><span>Fiksasi</span><small>Seluruh keputusan, kebutuhan, rundown, dan PIC Hari-H dikunci.</small></div>
-      <div><b>06 • 18 SEP</b><span>Gladi Bersih</span><small>Simulasi penuh dan penyelesaian kendala terakhir.</small></div>
-      <div><b>07 • 19 SEP</b><span>HARI-H</span><small>Eksekusi sesuai rundown dan koordinasi lintas divisi.</small></div>
+    <div class="info-kicker">JADWAL LENGKAP • REVISI WAKTU</div>
+    <h2 style="color:var(--maroon);margin:4px 0 12px;font-size:19px">Rangkaian Kegiatan</h2>
+    <div style="overflow-x:auto">
+      <table class="jadwal-tabel">
+        <thead><tr><th>Tanggal</th><th>Kegiatan</th><th>Waktu</th></tr></thead>
+        <tbody>
+          <tr class="utama"><td>21 Agustus</td><td>Rapat Perdana</td><td>19.00 – 21.00 WIB</td></tr>
+          <tr><td rowspan="3">27 Agustus</td><td>Rapat Internal Divisi Konsumsi</td><td>16.00 – 17.15 WIB</td></tr>
+          <tr><td>Rapat Internal Divisi Logistik</td><td>18.45 – 20.00 WIB</td></tr>
+          <tr><td>Rapat Internal Divisi Acara</td><td>20.15 – 21.30 WIB</td></tr>
+          <tr><td rowspan="2">28 Agustus</td><td>Rapat Internal Divisi PDD</td><td>16.00 – 17.15 WIB</td></tr>
+          <tr><td>Rapat Internal Divisi Humas</td><td>19.00 – 20.30 WIB</td></tr>
+          <tr class="utama"><td>29 Agustus</td><td>Progress I</td><td>19.00 – 21.00 WIB</td></tr>
+          <tr><td rowspan="3">3 September</td><td>Rapat Internal Divisi Konsumsi</td><td>16.00 – 17.15 WIB</td></tr>
+          <tr><td>Rapat Internal Divisi Logistik</td><td>18.45 – 20.00 WIB</td></tr>
+          <tr><td>Rapat Internal Divisi Acara</td><td>20.15 – 21.30 WIB</td></tr>
+          <tr><td rowspan="2">4 September</td><td>Rapat Internal Divisi PDD</td><td>16.00 – 17.15 WIB</td></tr>
+          <tr><td>Rapat Internal Divisi Humas</td><td>19.00 – 20.30 WIB</td></tr>
+          <tr class="utama"><td>5 September</td><td>Progress II</td><td>19.00 – 21.00 WIB</td></tr>
+          <tr><td rowspan="3">8 September</td><td>Rapat Internal Divisi Konsumsi</td><td>16.00 – 17.15 WIB</td></tr>
+          <tr><td>Rapat Internal Divisi Logistik</td><td>18.45 – 20.00 WIB</td></tr>
+          <tr><td>Rapat Internal Divisi Acara</td><td>20.15 – 21.30 WIB</td></tr>
+          <tr><td rowspan="2">9 September</td><td>Rapat Internal Divisi PDD</td><td>16.00 – 17.15 WIB</td></tr>
+          <tr><td>Rapat Internal Divisi Humas</td><td>19.00 – 20.30 WIB</td></tr>
+          <tr class="utama"><td>10 September</td><td>Progress III</td><td>19.00 – 21.00 WIB</td></tr>
+          <tr><td rowspan="3">13 September</td><td>Rapat Internal Divisi Konsumsi</td><td>16.00 – 17.15 WIB</td></tr>
+          <tr><td>Rapat Internal Divisi Logistik</td><td>18.45 – 20.00 WIB</td></tr>
+          <tr><td>Rapat Internal Divisi Acara</td><td>20.15 – 21.30 WIB</td></tr>
+          <tr><td rowspan="2">14 September</td><td>Rapat Internal Divisi PDD</td><td>16.00 – 17.15 WIB</td></tr>
+          <tr><td>Rapat Internal Divisi Humas</td><td>19.00 – 20.30 WIB</td></tr>
+          <tr class="utama"><td>15 September</td><td>Fiksasi</td><td>19.00 – 21.00 WIB</td></tr>
+          <tr class="utama"><td>18 September</td><td>Gladi</td><td>Menyesuaikan</td></tr>
+          <tr class="utama hari-h"><td>19 September</td><td>HARI-H — Pelaksanaan AITHON 2026</td><td>Menyesuaikan rundown</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="jadwal-catatan">
+      <b>Keterangan</b>
+      Jadwal rapat internal di atas merupakan <b>plotting awal</b>. Sesi sore dimajukan ke pukul
+      16.00 WIB agar tidak membentrok dengan waktu Magrib. Apabila ada anggota yang bentrok dengan
+      jadwal kuliah, kegiatan organisasi, atau agenda lain, perubahan jam bisa langsung
+      diinformasikan dan dikoordinasikan kembali di grup divisi masing-masing.
     </div>
   </div>
 </section>
-
 
 <section id="final" class="page">
 <div class="card" style="margin-bottom:18px">
@@ -476,7 +523,7 @@ img{max-width:100%;height:auto}
 </div>
 </div>
 <div class="cards">
-<div class="progress-card"><div class="date">12 SEPTEMBER</div><h3>FIKSASI</h3><p>Rundown, petugas, pemateri, materi, praktik, challenge, venue, perangkat, konsumsi, publikasi, administrasi, dan kebutuhan hari-H dikunci.</p></div>
+<div class="progress-card"><div class="date">15 SEPTEMBER</div><h3>FIKSASI</h3><p>Rundown, petugas, pemateri, materi, praktik, challenge, venue, perangkat, konsumsi, publikasi, administrasi, dan kebutuhan hari-H dikunci.</p></div>
 <div class="progress-card"><div class="date">13–17 SEPTEMBER</div><h3>FINAL PRODUCTION</h3><p>Produksi akhir dan pengecekan dilakukan tanpa membuka konsep besar baru. Semua pekerjaan mengikuti hasil fiksasi.</p></div>
 <div class="progress-card"><div class="date">18 SEPTEMBER</div><h3>GLADI BERSIH</h3><p>Simulasi registrasi → opening → materi → praktik → challenge → closing.</p></div>
 <div class="progress-card"><div class="date">19 SEPTEMBER</div><h3>HARI-H</h3><p>AITHON 09.00–12.30 WIB. Alur koordinasi: Divisi → PJ → OC → Ketupel.</p></div>
@@ -890,25 +937,75 @@ const events={
   },
   sep:{
     5:["PROGRESS II","<b>Fokus:</b> production check. <b>Target:</b> pekerjaan utama sudah masuk tahap produksi dan kebutuhan yang berisiko menghambat acara mulai diamankan.<div class='detail-grid'><div class='detail-box'><b>YANG DICEK</b><ul><li>Rundown lebih rinci dan petugas mulai terpetakan.</li><li>Koordinasi Fauwzi Ramadhan, moderator, MC, praktik, dan challenge berjalan.</li><li>PDD mulai produksi poster, sertifikat, PPT, dan aset dokumentasi.</li><li>Venue, audio, proyektor, internet, konsumsi, dan anggaran ditindaklanjuti.</li></ul></div><div class='detail-box'><b>TARGET PROGRES</b><p>Minimal 60–70%. Tidak ada kebutuhan utama yang belum memiliki PIC dan deadline.</p></div></div>","PROGRESS II"],
-    10:["PROGRESS III","<b>Fokus:</b> quality control terakhir sebelum fiksasi. <b>Target:</b> minimal 85–90% dan semua celah persiapan sudah mempunyai penyelesaian yang jelas.<div class='detail-grid'><div class='detail-box'><b>WAJIB AMAN</b><ul><li>Rundown dan petugas Hari-H hampir final.</li><li>Pemateri/GSA, moderator, dan MC terkonfirmasi.</li><li>Materi, praktik AI, dan AI Challenge siap diuji.</li><li>Aset PDD utama siap.</li><li>Venue dan perangkat utama terkonfirmasi.</li><li>Administrasi, RAB, konsumsi, dan data peserta terkontrol.</li></ul></div><div class='detail-box'><b>KEPUTUSAN</b><p>Semua pekerjaan yang belum aman wajib mempunyai solusi, PIC, dan deadline sebelum Fiksasi 13 September.</p></div></div>","PROGRESS III"],
-    13:["FIKSASI","<b>Fokus:</b> mengunci seluruh keputusan final. Setelah tanggal ini tidak ada perubahan konsep besar kecuali kondisi mendesak.<div class='detail-grid'><div class='detail-box'><b>YANG DIKUNCI</b><ul><li>Rundown final dan seluruh petugas.</li><li>Materi, praktik, AI Challenge, MC/moderator.</li><li>Konfirmasi Fauwzi Ramadhan/GSA.</li><li>Venue, layout, audio, proyektor, internet.</li><li>PPT, sertifikat, publikasi, dan dokumentasi.</li><li>Konsumsi, anggaran, dokumen, dan kontak Hari-H.</li></ul></div><div class='detail-box'><b>STATUS</b><p>Target 100% secara administrasi dan operasional. Setelah fiksasi, fokus hanya final check, persiapan barang, dan gladi.</p></div></div>","FIKSASI"],
+    10:["PROGRESS III","<b>Fokus:</b> quality control terakhir sebelum fiksasi. <b>Target:</b> minimal 85–90% dan semua celah persiapan sudah mempunyai penyelesaian yang jelas.<div class='detail-grid'><div class='detail-box'><b>WAJIB AMAN</b><ul><li>Rundown dan petugas Hari-H hampir final.</li><li>Pemateri/GSA, moderator, dan MC terkonfirmasi.</li><li>Materi, praktik AI, dan AI Challenge siap diuji.</li><li>Aset PDD utama siap.</li><li>Venue dan perangkat utama terkonfirmasi.</li><li>Administrasi, RAB, konsumsi, dan data peserta terkontrol.</li></ul></div><div class='detail-box'><b>KEPUTUSAN</b><p>Semua pekerjaan yang belum aman wajib mempunyai solusi, PIC, dan deadline sebelum Fiksasi 15 September.</p></div></div>","PROGRESS III"],
+    15:["FIKSASI","<b>Fokus:</b> mengunci seluruh keputusan final. Setelah tanggal ini tidak ada perubahan konsep besar kecuali kondisi mendesak.<div class='detail-grid'><div class='detail-box'><b>YANG DIKUNCI</b><ul><li>Rundown final dan seluruh petugas.</li><li>Materi, praktik, AI Challenge, MC/moderator.</li><li>Konfirmasi Fauwzi Ramadhan/GSA.</li><li>Venue, layout, audio, proyektor, internet.</li><li>PPT, sertifikat, publikasi, dan dokumentasi.</li><li>Konsumsi, anggaran, dokumen, dan kontak Hari-H.</li></ul></div><div class='detail-box'><b>STATUS</b><p>Target 100% secara administrasi dan operasional. Setelah fiksasi, fokus hanya final check, persiapan barang, dan gladi.</p></div></div>","FIKSASI"],
     18:["GLADI BERSIH","<b>Fokus:</b> simulasi penuh H-1. <b>Harus selesai:</b> seluruh panitia mengetahui posisi, alur, waktu, alat, dan jalur penyelesaian kendala.<div class='detail-grid'><div class='detail-box'><b>SIMULASI</b><ul><li>Check-in → pembukaan → sambutan.</li><li>Materi → praktik AI → AI Challenge.</li><li>Dokumentasi → pengumuman/doorprize → penutup.</li><li>Uji audio, proyektor, internet, PPT, kamera, dan perlengkapan challenge.</li></ul></div><div class='detail-box'><b>HASIL</b><p>Semua kendala gladi ditutup atau memiliki solusi teknis. Setelah gladi, perubahan hanya bersifat kecil dan teknis.</p></div></div>","H-1"],
     19:["HARI-H","<b>Eksekusi:</b> 08.50–12.45 WIB di Kelas 404–405, Gedung FEB Lt. 4 Kampus Sindangsari. Seluruh PJ standby dan koordinasi lintas divisi mengikuti jalur komando.<div class='detail-grid'><div class='detail-box'><b>PEMATERI</b><p>Fauwzi Ramadhan — Google Student Ambassador (GSA).</p></div><div class='detail-box'><b>TARGET</b><p>Seminar internal berjalan sesuai rundown dan peserta memperoleh pengalaman praktik AI serta AI Challenge.</p></div></div>","EXECUTE"]
   }
 };
 const monthNames=["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+/* Timeline revisi (Timeline_AITHON_2026_Revisi_Waktu.pdf, 19 Agustus 2026).
+   Dua hal yang ditambahkan ke data agenda bawaan halaman:
+   1. jam untuk setiap rapat utama — sebelumnya tidak ada sama sekali;
+   2. 8 hari rapat internal divisi yang belum pernah masuk kalender. */
+const JADWAL_UTAMA={
+  "8-21":"19.00 – 21.00 WIB",
+  "8-29":"19.00 – 21.00 WIB",
+  "9-5":"19.00 – 21.00 WIB",
+  "9-10":"19.00 – 21.00 WIB",
+  "9-15":"19.00 – 21.00 WIB",
+  "9-18":"Menyesuaikan",
+  "9-19":"Menyesuaikan rundown"
+};
+
+/* Pola berulang: hari pertama Konsumsi–Logistik–Acara, hari kedua PDD–Humas. */
+const POLA_A=[["Konsumsi","16.00 – 17.15 WIB"],["Logistik","18.45 – 20.00 WIB"],["Acara","20.15 – 21.30 WIB"]];
+const POLA_B=[["PDD","16.00 – 17.15 WIB"],["Humas","19.00 – 20.30 WIB"]];
+const JADWAL_DIVISI={
+  "8-27":POLA_A, "8-28":POLA_B,
+  "9-3":POLA_A,  "9-4":POLA_B,
+  "9-8":POLA_A,  "9-9":POLA_B,
+  "9-13":POLA_A, "9-14":POLA_B
+};
+
+const JADWAL_CATATAN="Jadwal rapat internal di atas merupakan <b>plotting awal</b>. Sesi sore dimajukan ke pukul 16.00 WIB agar tidak membentrok dengan waktu Magrib. Apabila ada anggota yang bentrok dengan jadwal kuliah, kegiatan organisasi, atau agenda lain, perubahan jam bisa langsung diinformasikan dan dikoordinasikan kembali di grup divisi masing-masing.";
+
+/* Sisipkan jam ke detail rapat utama. */
+Object.entries(JADWAL_UTAMA).forEach(([k,jam])=>{
+  const [bln,tgl]=k.split("-").map(Number);
+  const bank=bln===8?events.aug:events.sep;
+  const e=bank[tgl];
+  if(!e) return;
+  e[1]=`<div class="jadwal-jam">🕒 ${jam}</div>`+e[1];
+});
+
+/* Tambahkan hari rapat internal divisi sebagai agenda tersendiri. */
+Object.entries(JADWAL_DIVISI).forEach(([k,daftar])=>{
+  const [bln,tgl]=k.split("-").map(Number);
+  const bank=bln===8?events.aug:events.sep;
+  if(bank[tgl]) return;                       // jangan menimpa rapat utama
+  const isi=daftar.map(([d,j])=>
+    `<div class="jadwal-baris"><b>Divisi ${d}</b><span>${j}</span></div>`).join("");
+  bank[tgl]=[
+    "RAPAT DIVISI",
+    `<div class="jadwal-list">${isi}</div><p style="margin:10px 0 0">Rapat internal masing-masing divisi. Setiap divisi membawa progres, kendala, dan kebutuhan yang akan dilaporkan pada progress check berikutnya.</p>`,
+    daftar.length+" DIVISI"
+  ];
+});
+
 /* Kalender satu tampilan dengan panah geser. Data agenda memakai `events` milik
    halaman ini (isi detailnya HTML, jadi sengaja tidak di-escape). */
 const calBulan=[
   {year:2026,month:8,data:events.aug},
   {year:2026,month:9,data:events.sep}
 ];
-const calWarna=[["var(--maroon)","Rapat & Hari-H"],["var(--plum)","Progress"],["var(--gold)","Fiksasi & Gladi"]];
+const calWarna=[["var(--maroon)","Rapat & Hari-H"],["var(--plum)","Progress"],["var(--gold)","Fiksasi & Gladi"],["var(--lav)","Rapat divisi"]];
 let calIdx=0,calPick=null;
 
 function calKelas(nama){
   if(nama==="HARI-H"||nama==="RAPAT PERDANA") return "m";
   if(nama.includes("GLADI")||nama.includes("FIKSASI")) return "g";
+  if(nama==="RAPAT DIVISI") return "l";
   return "p";
 }
 
@@ -1158,7 +1255,7 @@ function ckKunci(it){
   return [bersih(it.tahap),bersih(it.divisi),bersih(it.tugas).slice(0,60)].join("|");
 }
 
-const rab={"sumber":"https://docs.google.com/spreadsheets/d/1AtMls0gO6CUwhryH-jxHwV8LGNQi1BqaDcGK7yLFH5s/edit","csv":"https://docs.google.com/spreadsheets/d/1AtMls0gO6CUwhryH-jxHwV8LGNQi1BqaDcGK7yLFH5s/export?format=csv","snapshot":"19 Agustus 2026","kategori":[{"kode":"A","nama":"KESEKRETARIATAN & ADMINISTRASI","subtotal":10000,"items":[{"no":1,"item":"Sertifikat Narsum & Moderator","volume":"2","satuan":"pcs","harga":5000,"total":10000,"ket":""},{"no":2,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":3,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""}]},{"kode":"B","nama":"OPERASIONAL & TEKNOLOGI","subtotal":0,"items":[{"no":1,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":2,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":3,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""}]},{"kode":"C","nama":"ACARA & KEGIATAN","subtotal":410000,"items":[{"no":1,"item":"Narasumber","volume":"1","satuan":"","harga":300000,"total":300000,"ket":""},{"no":2,"item":"Hadiah Challenge","volume":"3","satuan":"","harga":20000,"total":60000,"ket":""},{"no":3,"item":"Spanduk 250 cm","volume":"1","satuan":"","harga":50000,"total":50000,"ket":""},{"no":4,"item":"Dekorasi","volume":"1","satuan":"","harga":30000,"total":30000,"ket":""}]},{"kode":"D","nama":"KONSUMSI","subtotal":100000,"items":[{"no":1,"item":"Snack ringan","volume":"3","satuan":"Ball","harga":25000,"total":75000,"ket":""},{"no":2,"item":"Air isi ulang galon","volume":"1","satuan":"Galon","harga":5000,"total":5000,"ket":""},{"no":3,"item":"Suguhan Tamu 2 Piring (3 jenis)","volume":"10","satuan":"satuan","harga":2000,"total":20000,"ket":""},{"no":4,"item":"Lee mineral Botol","volume":"3","satuan":"satuan","harga":3000,"total":9000,"ket":""}]},{"kode":"E","nama":"PUBLIKASI & MEDIA","subtotal":0,"items":[{"no":1,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":2,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":3,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""}]}],"grandTotal":520000};
+const rab={"sumber":"https://docs.google.com/spreadsheets/d/1AtMls0gO6CUwhryH-jxHwV8LGNQi1BqaDcGK7yLFH5s/edit","csv":"https://docs.google.com/spreadsheets/d/1AtMls0gO6CUwhryH-jxHwV8LGNQi1BqaDcGK7yLFH5s/export?format=csv","snapshot":"20 Agustus 2026","kategori":[{"kode":"A","nama":"KESEKRETARIATAN & ADMINISTRASI","subtotal":4000,"items":[{"no":1,"item":"Sertifikat Narsum & Moderator","volume":"2","satuan":"pcs","harga":2000,"total":4000,"ket":""},{"no":2,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":3,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""}]},{"kode":"B","nama":"OPERASIONAL & TEKNOLOGI","subtotal":0,"items":[{"no":1,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":2,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":3,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""}]},{"kode":"C","nama":"ACARA & KEGIATAN","subtotal":413000,"items":[{"no":1,"item":"Narasumber","volume":"1","satuan":"","harga":300000,"total":300000,"ket":""},{"no":2,"item":"Hadiah Challenge","volume":"3","satuan":"","harga":21000,"total":63000,"ket":""},{"no":3,"item":"Spanduk 250 cm","volume":"1","satuan":"","harga":50000,"total":50000,"ket":""},{"no":4,"item":"Dekorasi","volume":"1","satuan":"","harga":25000,"total":25000,"ket":""}]},{"kode":"D","nama":"KONSUMSI","subtotal":109000,"items":[{"no":1,"item":"Snack Kering 2 Jenis","volume":"2","satuan":"pcs","harga":40000,"total":80000,"ket":""},{"no":2,"item":"Isi ulang galon","volume":"1","satuan":"galon","harga":5000,"total":5000,"ket":""},{"no":3,"item":"Suguhan Tamu 2 Piring (3 jenis makanan basah)","volume":"12","satuan":"satuan","harga":2000,"total":24000,"ket":""},{"no":4,"item":"Lee mineral Botol (Tamu)","volume":"4","satuan":"satuan","harga":3000,"total":12000,"ket":""}]},{"kode":"E","nama":"PUBLIKASI & MEDIA","subtotal":0,"items":[{"no":1,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":2,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""},{"no":3,"item":"","volume":"","satuan":"","harga":null,"total":null,"ket":""}]}],"grandTotal":526000};
 /* `rab` (salinan cadangan) dan parser CSV disuntikkan saat build — jangan diedit manual. */
 const rupiah=n=>n==null?"—":"Rp "+Number(n).toLocaleString("id-ID");
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
